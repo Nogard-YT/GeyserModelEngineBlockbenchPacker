@@ -370,40 +370,52 @@ function calculateVisibleBox() {
                 
                 if (obj instanceof Cube) {
 
-                    let template = compileCube(obj, bone);
-                    
-                    var texture;
-
+                    var facesByTexture = {};
                     for (var face in obj.faces) {
-                        if (obj.faces[face].texture !== null) {
-                            texture = Texture.all.findInArray('uuid', obj.faces[face].texture);
-                            
-                            
-                            if (texture == null || texture.name == undefined) {
-                                continue
-                            }
-                            texture_name = texture.name.replace("_e.png", ".png");
-                            texture = Texture.all.findInArray('name', texture_name)
-                            
-                            break
-                        }
+                        if (obj.faces[face].texture === null) continue;
+                        var faceTexture = Texture.all.findInArray('uuid', obj.faces[face].texture);
+                        if (faceTexture == null || faceTexture.name == undefined) continue;
+                        var baseName = faceTexture.name.replace("_e.png", ".png");
+                        var baseTexture = Texture.all.findInArray('name', baseName);
+                        if (baseTexture == null || baseTexture.name == undefined) baseTexture = faceTexture;
+                        if (facesByTexture[baseTexture.name] == null) facesByTexture[baseTexture.name] = [];
+                        facesByTexture[baseTexture.name].push(face);
                     }
 
-                    if (texture == null || texture.name == undefined) {
+                    var texNames = Object.keys(facesByTexture);
+                    if (texNames.length === 0) {
                         continue
                     }
 
-                    if (textures_cubes[texture.name] == null) {
-                        var cube_name = "uv_" + bone.name + Object.keys(textures_cubes).length
-                        textures_cubes[texture.name] = {
-                            name: cube_name,
-                            pivot: [0, 0, 0],
-                            parent: bone.name,
-                            cubes: []
-                        };
-                    } 
-                    textures_cubes[texture.name].cubes.push(template);
-                    
+                    var splitByFace = texNames.length > 1 && !obj.box_uv;
+
+                    for (var ti = 0; ti < texNames.length; ti++) {
+                        var texName = texNames[ti];
+                        let template = compileCube(obj, bone);
+
+                        if (splitByFace && template.uv && !Array.isArray(template.uv)) {
+                            var keepFaces = facesByTexture[texName];
+                            for (var fk of Object.keys(template.uv)) {
+                                if (keepFaces.indexOf(fk) === -1) {
+                                    delete template.uv[fk];
+                                }
+                            }
+                        }
+
+                        if (textures_cubes[texName] == null) {
+                            var cube_name = "uv_" + bone.name + Object.keys(textures_cubes).length
+                            textures_cubes[texName] = {
+                                name: cube_name,
+                                pivot: [0, 0, 0],
+                                parent: bone.name,
+                                cubes: []
+                            };
+                        }
+                        textures_cubes[texName].cubes.push(template);
+
+                        if (!splitByFace) break;
+                    }
+
 
                 } else if (obj instanceof Locator || obj instanceof NullObject) {
                     let key = obj.name;
@@ -611,7 +623,7 @@ function calculateVisibleBox() {
         icon: 'bar_chart',
         description: '',
         tags: [],
-        version: '0.0.1',
+        version: '0.0.2',
         min_version: '4.8.0',
         variant: 'both',
         onload() {
