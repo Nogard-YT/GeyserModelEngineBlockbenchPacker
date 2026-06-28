@@ -18,6 +18,17 @@ function compileAnimationJson() {
     }
 }
 
+function modelHasHeadBones() {
+    return Group.all.some(function (g) {
+        return g.export !== false && typeof g.name === 'string'
+            && (g.name.startsWith('h_') || g.name.startsWith('hi_'));
+    });
+}
+
+function shouldWriteAnimationFile(animationData) {
+    return Object.keys(animationData.animations).length > 0 || modelHasHeadBones();
+}
+
 function calculateVisibleBox() {
     var visible_box = new THREE.Box3()
     Canvas.withoutGizmos(() => {
@@ -623,7 +634,7 @@ function calculateVisibleBox() {
         icon: 'bar_chart',
         description: '',
         tags: [],
-        version: '0.0.2',
+        version: '0.0.3',
         min_version: '4.8.0',
         variant: 'both',
         onload() {
@@ -661,7 +672,10 @@ function calculateVisibleBox() {
                     });
 
                     folder.file(Project.name + ".geo.json", JSON.stringify(codec.compile(null, model_config)))
-                    folder.file(Project.name + ".animation.json", JSON.stringify(compileAnimationJson()))
+                    let animationData = compileAnimationJson();
+                    if (shouldWriteAnimationFile(animationData)) {
+                        folder.file(Project.name + ".animation.json", JSON.stringify(animationData))
+                    }
                     folder.file("config.json", JSON.stringify(model_config))
                     zip.generateAsync({ type: 'blob' }).then(content => {
                         Blockbench.export({
@@ -712,7 +726,10 @@ function calculateVisibleBox() {
                         });
 
                         folder.file(Project.name + ".geo.json", JSON.stringify(codec.compile(null, model_config)))
-                        folder.file(Project.name + ".animation.json", JSON.stringify(compileAnimationJson()))
+                        let animationData = compileAnimationJson();
+                        if (shouldWriteAnimationFile(animationData)) {
+                            folder.file(Project.name + ".animation.json", JSON.stringify(animationData))
+                        }
                         folder.file("config.json", JSON.stringify(model_config))
 
                     }
